@@ -249,6 +249,7 @@ class TrojanDatabase:
             """ Clear user data usage
             """
             self.cursor.execute("UPDATE {} SET download = 0, upload = 0 WHERE username = '{}'".format(self.table, username))
+            self.connection.commit()
         return 0
 
     @catch_mysql_errors
