@@ -19,7 +19,7 @@ import readline
 import sys
 import traceback
 
-VERSION = '1.3.7'
+VERSION = '1.3.8'
 COMMANDS = [
     "CreateUserTable",
     "TruncateUserTable",
@@ -148,7 +148,7 @@ class TrojanDatabase:
         fullhash = hashlib.sha224('{}:{}'.format(username, password).encode('utf-8')).hexdigest()
         self.cursor.execute("INSERT INTO {} (username, password) VALUES ('{}', '{}')".format(self.table, username, fullhash))
         # self.cursor.execute("INSERT INTO {} SHA2(CONCAT(username, ':', password)', 224) VALUES ('{}', '{}')".format(self.table, username, password))
-        # self.connection.commit()
+        self.connection.commit()
         return 0
 
     @show_affection
@@ -239,10 +239,16 @@ class TrojanDatabase:
 
     @show_affection
     @catch_mysql_errors
-    def clear_usage(self, username):
-        """ Clear user data usage
-        """
-        self.cursor.execute("UPDATE {} SET download = 0, upload = 0 WHERE username = '{}'".format(self.table, username))
+    def clear_usage(self, username=None):
+        if username is None:
+            """ Clear all users data usage
+            """
+            self.cursor.execute("UPDATE {} SET download = 0, upload = 0".format(self.table))
+            self.connection.commit()
+        else:
+            """ Clear user data usage
+            """
+            self.cursor.execute("UPDATE {} SET download = 0, upload = 0 WHERE username = '{}'".format(self.table, username))
         return 0
 
     @catch_mysql_errors
@@ -333,7 +339,10 @@ def command_interpreter(db_connection, commands):
         elif commands[1].lower() == 'addquota':
             result = db_connection.add_quota(commands[2], commands[3])
         elif commands[1].lower() == 'clearusage':
-            result = db_connection.clear_usage(commands[2])
+            if len(commands) > 2:
+                result = db_connection.clear_usage(commands[2])
+            else:
+                result = db_connection.clear_usage()
         elif commands[1].lower() == 'exit' or commands[1].lower() == 'quit':
             Avalon.warning('Exiting')
             exit(0)
@@ -359,7 +368,7 @@ def main():
     """
     # Create database controller connection
     try:
-        trojan_db = TrojanDatabase('127.0.0.1', 'trojan', 'thisisthetrojandbpassword', 'trojan', 'users')
+        trojan_db = TrojanDatabase('127.0.0.1', 'trojan', 'thisisthetrojandbpassword', 'trojan_db', 'users')
     except (MySQLdb.OperationalError) as e:
         Avalon.error('Error establishing connection to MySQL/MariaDB')
         Avalon.error('Please check your settings')
